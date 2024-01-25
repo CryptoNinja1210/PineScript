@@ -1,299 +1,166 @@
+// © HMH
 //@version=5
-indicator("Diamond Bot 18124", overlay=true, max_bars_back=2000, max_labels_count=500)
-
-// GENERAL INPUTS
-minute_resistance_color = input(color.rgb(255, 59, 59), title='Minute Resistance', group='colors')
-minute_support_color = input(color.rgb(255, 59, 59), title='Minute Support', group='colors')
-hourly_resistance_color = input(color.new(color.blue, 0), title='Hourly Resistance', group='colors')
-hourly_support_color = input(color.rgb(92, 128, 246), title='Hourly Support', group='colors')
-daily_vwap_color = input(color.orange, title='Daily VWAP', group='colors')
-daily_poc_color = input(color.purple, title='Daily PoC', group='colors')
-weekly_vwap_color = input(color.black, title='Weekly VWAP', group='colors')
-
-var float nearest_long = na
-var float nearest_short = na
-price = close // or you can use a different way to set the price, depending on your requirements
-
-// OUTPUTS
-var float minute_resistance = na
-var float minute_support = na
-var float hourly_resistance = na
-var float hourly_support = na
-float daily_vwap = na
-float daily_poc = na
-float weekly_vwap = na
-
-// DAILY VWAP
-daily_vwap := ta.vwap(close)
-
-
-//  MINUTE SR
-min_bars_in_cycle = input(1, title='Minimum bars between price touches with daily vwap to update minute support and resistance', group='minute support and resistance')
-var int bars_in_cycle = 0
-var float highest = high
-var int highest_bar = bar_index
-var float lowest = low
-var int lowest_bar = bar_index
-if high > highest
-    highest := high
-    highest_bar := bar_index
-if low < lowest
-    lowest := low
-    lowest_bar := bar_index
-var line minute_support_line = na
-var line minute_resistance_line = na
-var float minute_support_percent = na  // Add this line
-var bool support_label_plotted = na   // Add this line
-var float minute_resistance_percent = na  // Add this line
-var bool resistance_label_plotted = na   // Add this line
-minute_support_line.set_x2(bar_index)
-minute_resistance_line.set_x2(bar_index)
-max_ohlc4 = math.max(open, high, low, close)
-min_ohlc4 = math.min(open, high, low, close)
-bars_in_cycle += 1
-if ta.crossover(max_ohlc4, daily_vwap)
-    if bars_in_cycle >= min_bars_in_cycle
-        minute_support_line.set_x2(bar_index)
-        minute_support := lowest
-        minute_support_percent := ((minute_support - daily_vwap) / daily_vwap) * 100
-        minute_support_line_dotted = line.new(lowest_bar, minute_support, bar_index, minute_support, color=minute_support_color, style=line.style_dashed)
-        minute_support_line := line.new(bar_index, minute_support, bar_index, minute_support, color=minute_support_color)
-        highest := high
-        highest_bar := bar_index
-        lowest := low
-        lowest_bar := bar_index
-        support_label_plotted := false
-    bars_in_cycle := 0
-
-if ta.crossunder(min_ohlc4, daily_vwap)
-    if bars_in_cycle >= min_bars_in_cycle
-        minute_resistance_line.set_x2(bar_index)
-        minute_resistance := highest
-        minute_resistance_percent := ((minute_resistance - daily_vwap) / daily_vwap) * 100
-        minute_resistance_line_dotted = line.new(highest_bar, minute_resistance, bar_index, minute_resistance, color=minute_resistance_color, style=line.style_dashed)
-        minute_resistance_line := line.new(bar_index, minute_resistance, bar_index, minute_resistance, color=minute_resistance_color)
-        highest := high
-        highest_bar := bar_index
-        lowest := low
-        lowest_bar := bar_index
-        resistance_label_plotted := false
-    bars_in_cycle := 0
-
-
-
-
-// HOURLY SR
-// Calculate the highest and lowest points above and below VWAP in the last 12 hours
-var float highPrice = na
-var float lowPrice = na
-if (time >= time[1] - 200) // 12 hours in seconds
-    if high > ta.vwap and (na(highPrice) or high > highPrice)
-        highPrice := high
-    if low < ta.vwap and (na(lowPrice) or low < lowPrice)
-        lowPrice := low
-
-// Plot the high and low lines using plot
-hourly_resistance := highPrice
-hourly_support := lowPrice
-plot(hourly_resistance, color=hourly_resistance_color, title='High Above VWAP', linewidth=2)
-plot(hourly_support, color=hourly_support_color, title='Low Below VWAP', linewidth=2)
-
-// Daily POC 
-
-// DAILY POC - TradingView's Session Volume Profile
-var float daily_poc_price = na
-
-daily_poc_price := 1
-
-
-// Plot Daily POC
-plot(daily_poc_price, color=color.rgb(117, 33, 243), title='Daily PoC', linewidth=2)
-
-// WEEKLY VWAP
-source_dv = hlc3
-anchor = na(source_dv[1]) ? true : timeframe.change("W")
-weekly_vwap := ta.vwap(source_dv, anchor)
-
-// PLOTS
-daily_vwap_plot = plot(daily_vwap, title='Daily VWAP', color=daily_vwap_color)
-weekly_vwap_plot = plot(weekly_vwap, title='Weekly VWAP', color=weekly_vwap_color)
-
-
-// Calculate delta's (weekly_vwap, daily_poc, minute_resistance, minute_support, hourly_resistance, hourly_support)
-
-
-weekly_vwap_delta = weekly_vwap - daily_vwap
-
-
-poc_delta = daily_poc_price - daily_vwap
-
-
-minute_resistance_delta = minute_resistance - daily_vwap
-
-minute_support_delta = minute_support - daily_vwap
-
-
-hourly_resistance_delta = hourly_resistance - daily_vwap
-
-
-hourly_support_delta = hourly_support - daily_vwap
-
-
-price_delta = close- daily_vwap
-
-// NEAREST LEVELS TABLE
-var table_position_input_levels = "top_right"
-
-// Add the new column to the array
-var table_columns_array_levels = array.from("Level Type", "Nearest Level", "Risk/Reward Long", "Risk/Reward Short", "Column 4") 
-var table_max_rows_levels = 6
-var table_border_width_levels = 1
-var table_border_color_levels = color.gray
-var table_frame_color_levels = color.gray
-var table_frame_width_levels = 1
-var table_header_text_size_levels = size.small
-var table_header_bgcolor_levels = color.black
-var table_header_text_color_levels = color.white
-var table_columns_levels = array.size(table_columns_array_levels)
-
-
-
-
-// Create the table
-var table nearest_levels_table = table.new(table_position_input_levels, table_columns_levels, table_max_rows_levels, border_width=table_border_width_levels, border_color=table_border_color_levels, frame_color=table_frame_color_levels, frame_width=table_frame_width_levels)
-
-// Calculate and add values for the new column for each row
-var float epsilon = 1e-12  // Small value to avoid division by zero
-var float multiplier = 1
-
-var float column_4_values_1 = na
-var float column_4_values_2 = na
-var float column_4_values_3 = na
-var float column_4_values_4 = na
-var float column_4_values_5 = na
-var float column_4_values_6 = na
-
-if (math.abs(price_delta) > epsilon)
-    column_4_values_1 := multiplier * ((weekly_vwap_delta) - (price_delta)) / (price_delta)
-    column_4_values_2 := multiplier * ((poc_delta) -  (price_delta)) / (price_delta)
-    column_4_values_3 := multiplier * ((minute_resistance_delta) -  (price_delta)) / (price_delta)
-    column_4_values_4 := multiplier * ((minute_support_delta) -  (price_delta)) / (price_delta)
-    column_4_values_5 := multiplier * ((hourly_resistance_delta) -  (price_delta)) / (price_delta)
-    column_4_values_6 := multiplier * ((hourly_support_delta) -  (price_delta)) / (price_delta)
-else
-    // Handle division by zero case, set it to a default value or handle it accordingly
-    column_4_values_1 := 0
-    column_4_values_2 := 0
-    column_4_values_3 := 0
-    column_4_values_4 := 0
-    column_4_values_5 := 0
-    column_4_values_6 := 0
-
-
-
-// Boolean variables to check if lines are above/below/between price and VWAP
-var bool isWeeklyVWAPAbove = na
-var bool isWeeklyVWAPBetween = na
-var bool isWeeklyVWAPBelow = na
-var bool isDailyPOCAbove = na
-var bool isDailyPOCBetween = na
-var bool isDailyPOCBelow = na
-var bool isMinuteResistanceAbove = na
-var bool isMinuteResistanceBetween = na
-var bool isMinuteResistanceBelow = na
-var bool isMinuteSupportAbove = na
-var bool isMinuteSupportBetween = na
-var bool isMinuteSupportBelow = na
-var bool isHourlyResistanceAbove = na
-var bool isHourlyResistanceBetween = na
-var bool isHourlyResistanceBelow = na
-var bool isHourlySupportAbove = na
-var bool isHourlySupportBetween = na
-var bool isHourlySupportBelow = na
-
-if (barstate.islast)
-    isWeeklyVWAPAbove := weekly_vwap > price and price >= daily_vwap
-    isWeeklyVWAPBetween := (price >= weekly_vwap and price >= daily_vwap) or ( price <= weekly_vwap and price <= daily_vwap )
-    isWeeklyVWAPBelow   := weekly_vwap < price and price <= daily_vwap
-    isDailyPOCAbove := daily_poc_price > price and price >= daily_vwap
-    isDailyPOCBetween :=  ( price >= daily_poc_price and price >= daily_vwap) or ( price <= daily_poc_price and price <= daily_vwap)
-    isDailyPOCBelow := daily_poc_price < price and price <= daily_vwap
-    isMinuteResistanceAbove := minute_resistance > price and price >= daily_vwap
-    isMinuteResistanceBetween := (price >= minute_resistance and price >= daily_vwap ) or (price <= minute_resistance and price <= daily_vwap )
-    isMinuteResistanceBelow := minute_resistance < price and price <= daily_vwap
-    isMinuteSupportAbove := minute_support > price and price >= daily_vwap
-    isMinuteSupportBetween := ( price >= minute_support and price >= daily_vwap ) or ( price <= minute_support and price <= daily_vwap )
-    isMinuteSupportBelow := minute_support < price and price <= daily_vwap
-    isHourlyResistanceAbove := hourly_resistance > price and price >= daily_vwap
-    isHourlyResistanceBetween := ( price >= hourly_resistance and price >= daily_vwap ) or ( price <= hourly_resistance and price <= daily_vwap )
-    isHourlyResistanceBelow := hourly_resistance < price and price <= daily_vwap
-    isHourlySupportAbove := hourly_support > price and price >= daily_vwap
-    isHourlySupportBetween := ( price >= hourly_support and price >= daily_vwap ) or ( price <= hourly_support and price <= daily_vwap )
-    isHourlySupportBelow := hourly_support < price and price <= daily_vwap
-
-
-// Add values to the table cells for each row
-table.cell(nearest_levels_table, column=0, row=0, text="Weekly VWAP", text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=1, row=0, text=str.tostring(math.abs(weekly_vwap_delta)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=2, row=0, text=str.tostring(math.abs(close - daily_vwap)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=3, row=0, text=str.tostring(column_4_values_1), text_size=size.small, bgcolor=color.white, text_color=color.black) // Add the new column
-table.cell(nearest_levels_table, column=4, row=0, text=isWeeklyVWAPAbove ? "Above" : (isWeeklyVWAPBetween ? "Irrelevent" : "Below"), text_size=size.small, bgcolor=color.white, text_color=color.black)
-
-
-table.cell(nearest_levels_table, column=0, row=1, text="Daily POC", text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=1, row=1, text=str.tostring(math.abs(poc_delta)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=2, row=1, text=str.tostring(math.abs(close - daily_vwap)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=3, row=1, text=str.tostring(column_4_values_2), text_size=size.small, bgcolor=color.white, text_color=color.black) // Add the new column
-table.cell(nearest_levels_table, column=4, row=1, text=isDailyPOCAbove ? "Above" : (isDailyPOCBetween ? "Irrelevent" : "Below"), text_size=size.small, bgcolor=color.white, text_color=color.black)
-
-table.cell(nearest_levels_table, column=0, row=2, text="Minute Resistance", text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=1, row=2, text=str.tostring(math.abs(minute_resistance_delta)), text_size=size.small,  bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=2, row=2, text=str.tostring(math.abs(close - daily_vwap)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=3, row=2, text=str.tostring(column_4_values_3), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=4, row=2, text=isMinuteResistanceAbove ? "Above" : (isMinuteResistanceBetween ? "Irrelevent" : "Below"), text_size=size.small, bgcolor=color.white, text_color=color.black)
-
-table.cell(nearest_levels_table, column=0, row=3, text="Minute Support", text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=1, row=3, text=str.tostring(math.abs(minute_support_delta)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=2, row=3, text=str.tostring(math.abs(close - daily_vwap)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=3, row=3, text=str.tostring(column_4_values_4), text_size=size.small, bgcolor=color.white, text_color=color.black) // Add the new column
-table.cell(nearest_levels_table, column=4, row=3, text=isMinuteSupportAbove ? "Above" : (isMinuteSupportBetween ? "Irrelevent" : "Below"), text_size=size.small, bgcolor=color.white, text_color=color.black)
-
-
-table.cell(nearest_levels_table, column=0, row=4, text="Hourly Resistance", text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=1, row=4, text=str.tostring(math.abs(hourly_resistance_delta)), text_size=size.small,  bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=2, row=4, text=str.tostring(math.abs(close - daily_vwap)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=3, row=4, text=str.tostring(column_4_values_5), text_size=size.small, bgcolor=color.white, text_color=color.black) // Add the new colum
-table.cell(nearest_levels_table, column=4, row=4, text=isHourlyResistanceAbove ? "Above" : (isHourlyResistanceBetween ? "Irrelevent" : "Below"), text_size=size.small, bgcolor=color.white, text_color=color.black)
-
-table.cell(nearest_levels_table, column=0, row=5, text="Hourly Support", text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=1, row=5, text=str.tostring(math.abs(hourly_support_delta)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=2, row=5, text=str.tostring(math.abs(close - daily_vwap)), text_size=size.small, bgcolor=color.white, text_color=color.black)
-table.cell(nearest_levels_table, column=3, row=5, text=str.tostring(column_4_values_6), text_size=size.small, bgcolor=color.white, text_color=color.black) // Add the new colum
-table.cell(nearest_levels_table, column=4, row=5, text=isHourlySupportAbove ? "Above" : (isHourlySupportBetween ? "Irrelevent" : "Below"), text_size=size.small, bgcolor=color.white, text_color=color.black)
-
-
-
-
-// Calculate Risk/Reward Long and Short
-var float rr_long = na
-var float rr_short = na
-
-// Function to calculate risk-reward
-calc_rr(val, condition) =>
-    condition ? (val > 0 ? val : na) : na
-
-
-if (isWeeklyVWAPAbove or isDailyPOCAbove or isMinuteResistanceAbove or isMinuteSupportAbove or isHourlyResistanceAbove or isHourlySupportAbove)
-    rr_long := isWeeklyVWAPAbove ? column_4_values_1 : isDailyPOCAbove ? column_4_values_2 : isMinuteResistanceAbove ? column_4_values_3 : isMinuteSupportAbove ? column_4_values_4 : isHourlyResistanceAbove ? column_4_values_5 : column_4_values_6
-
-if (isWeeklyVWAPBelow or isDailyPOCBelow or isMinuteResistanceBelow or isMinuteSupportBelow or isHourlyResistanceBelow or isHourlySupportBelow)
-    rr_short := isWeeklyVWAPBelow ? column_4_values_1 : isDailyPOCBelow ? column_4_values_2 : isMinuteResistanceBelow ? column_4_values_3 : isMinuteSupportBelow ? column_4_values_4 : isHourlyResistanceBelow ? column_4_values_5 : column_4_values_6
-
-// ... (Rest of the code remains unchanged)
-
-var table rr_table = table.new(position=position.bottom_right, columns=2, rows=2, bgcolor=color.new(#27282b, 7), border_color=color.rgb(14, 14, 15), border_width=1)
-
-// Add two new columns to the rr_table for Risk/Reward Long and Short
-table.cell(rr_table, column=1, row=0, text=str.tostring(rr_long), text_color=color.white) 
-table.cell(rr_table, column=1, row=1, text=str.tostring(rr_short), text_color=color.white) 
+indicator("Point of Control",shorttitle="POC",overlay=true,explicit_plot_zorder=true)
+
+//======= Inputs
+// use_day=input.bool(false,"Daily Reset",group="Reset Trigger",tooltip="Priority Order Daily, Weekly, Candles")
+var use_day = true
+// use_week=input.bool(false,"Weekly Reset",group="Reset Trigger")
+// bars_ = input.int(800,title="# of Candles the reset",group="Reset Trigger",tooltip="Candles are counted from left to right")
+open_time=input.int(2200, "Market Open Time")
+bars_ = 800
+
+
+
+//======= Functions
+Round_to_Level(s_,t_)=>
+    math.round(s_/t_)*t_
+
+// Use average range across chart to estimate an increment
+Auto_Incr()=>
+    avg_range = math.round_to_mintick(ta.cum(high-low)/(bar_index+1))  //calculate the running average of the range rounded to mintick
+    wn_ = avg_range/syminfo.mintick                          // transform and convert to whole number
+    pow_ = math.pow(10,int(math.log10(wn_)))                           //use only integer portion of log
+    target_ = 2*math.ceil(wn_/pow_)*syminfo.mintick*pow_               //transform back to scale
+
+
+
+//=============== Main Execution
+src_ = high
+
+auto_incr = Auto_Incr()                                                 //Get auto_increment
+incr_ = auto_incr                                 //If input incr is 0 then use auto_incr
+
+//______________ Set up variables
+var bar_count =0
+var ub_ = high
+var lb_ = low
+var max_v =0.
+var POC_ = hlc3
+var v_ = array.new_float(0,0.)
+var p_ = array.new_float(0,0.)
+var hp_ = array.new_float(0,0.)
+var hv_ = array.new_float(0,0.)
+var Grand_poc2 = 0.
+var Grand_poc3 = 0.
+var Grand_poc4 = 0.
+var hist_POC_above=hlc3
+var hist_POC_below=hlc3
+var error= na(volume)           //determine if volume is available for the symbol
+
+if error                        
+    runtime.error("Indicator is only valid on symbols with  volume data") //generate error message if no volume for symbol
+
+new_day = timeframe.change("D")     //bool true/false if new day
+new_week= timeframe.change("W")     //bool true/false if new week
+
+//______________ reset based on day/week or # of bars
+// reset_ = switch
+//     use_day => new_day
+//     use_week => new_week
+//     => bar_count>=bars_ 
+reset_ = new_day
+
+//______________ store last POC_ and reset for new POC development
+if reset_ or bar_index==0
+    POC_idx = array.indexof(hp_,POC_)
+    if POC_idx == -1
+        array.push(hp_,POC_)
+        array.push(hv_,max_v)
+    else
+        hv_element=array.get(hv_,POC_idx)
+        array.set(hv_,POC_idx,max_v+hv_element)
+    bar_count:=0
+    ub_ := Round_to_Level(high,incr_)
+    lb_ := math.min(ub_-incr_,Round_to_Level(low,incr_))
+    array.clear(v_)
+    array.clear(p_)
+    array.push(v_,volume/2)
+    array.push(v_,volume/2)
+    array.push(p_, ub_)
+    array.push(p_, lb_)
+
+bar_count +=1
+
+///______________  if upper or lower bounder expands
+break_up = math.max(0.,high - ub_)
+breaK_dn = math.max(0.,lb_ - low)
+max_incr = int(break_up/incr_)+ (break_up%incr_>0? 1:0)
+min_decr = int(breaK_dn/incr_)+ (breaK_dn%incr_>0? 1:0)
+
+//______________ Check for upper boundary change
+//______________ If a change exists then place at the beginning of the array the new price levels
+if max_incr>0
+    i=1
+    while i<= max_incr
+        vol_incr = volume/max_incr
+        ub_ += incr_
+        array.unshift(v_,vol_incr)
+        array.unshift(p_, ub_)
+        i+=1
+
+//______________ Check for lower boundary change
+//______________ If a change exists then place at the end of the array the new price levels
+if min_decr>0
+    j=1
+    while j<= min_decr
+        vol_incr = volume/min_decr       
+        lb_ -= incr_
+        array.push(v_,vol_incr)
+        array.push(p_, lb_)
+        j+=1
+
+//______________ Array will be ordered from high to low for index 0 to array,size-1
+//______________ If there is no change in the boundaries then locate current price in the defined categories
+if max_incr==0 and min_decr==0
+    for [idx,element] in p_
+        if src_ > element and idx>0
+            v_element = array.get(v_,idx-1)
+            array.set(v_,idx-1, volume+v_element)
+            break
+
+//______________  Find point of control
+max_v :=array.max(v_)
+max_idx = array.indexof(v_,max_v)
+POC_ := array.get(p_,max_idx)
+
+//=== Sort dataset POCs
+hp_sorted_ =array.sort_indices(hp_,order.descending)
+hv_sorted_ =array.sort_indices(hv_,order.descending)
+
+//______________ Get historical POCs around current price
+for [idx,element] in hp_sorted_
+    hp_value = array.get(hp_,element)
+    hist_POC_above := hp_value
+    if src_>hp_value
+        hist_POC_below:= hp_value
+        if idx>=1
+            higher_idx = array.get(hp_sorted_,idx-1)
+            hist_POC_above:= array.get(hp_, higher_idx)
+        break
+
+//______________ find the POC for entire data set
+max_max_idx = array.get(hv_sorted_,0)
+Grand_POC = array.get(hp_,max_max_idx)
+
+//______________ get the next 3 high volume levels
+if array.size(hv_sorted_)>=4 
+    max2_idx = array.get(hv_sorted_,1)
+    max3_idx = array.get(hv_sorted_,2)
+    max4_idx = array.get(hv_sorted_,3)
+    Grand_poc2 := array.get(hp_, max2_idx)
+    Grand_poc3 := array.get(hp_, max3_idx)
+    Grand_poc4 := array.get(hp_, max4_idx)
+
+
+plot(POC_,color=color.purple,style=plot.style_linebr,linewidth=1,title="POC_")
+
+//______________ Setup label and line
+var lab_1 = label.new(na,na,text=na,color=color.white,textcolor=color.black,size=size.small)
+var line_1 = line.new(na,na,na,na,color=color.gray, style= line.style_dashed,extend=extend.both)
+
+//______________ Draw Verticle line Marking the Reset Point
+if reset_
+    line.set_xy1(line_1,bar_index,0.)
+    line.set_xy2(line_1,bar_index,close)
 
