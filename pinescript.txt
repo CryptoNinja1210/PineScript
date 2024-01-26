@@ -7,7 +7,7 @@ indicator('POC & Volume Profile', overlay=true, max_boxes_count=500)
 src    = input.source(close,"Source")
 rows   = input.int(20,"Row Size",minval=5, maxval=500)
 disp   = input.string("Counter","Display",["Counter","Volume"])
-offset = input.int(100,"Offset",step=25)
+offset = input.int(2,"Offset",step=5)
 poc    = input.bool(true,"Point of Control")
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
 
@@ -33,15 +33,22 @@ Gradient(a,i)=>
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
 
 printTable(txt) =>
-    var table t = table.new(position.middle_right, 1, 1)
+    var table t = table.new(position.bottom_right, 1, 1)
     table.cell(t, 0, 0, txt, text_halign = text.align_right, bgcolor = color.yellow)
 printTable(
   str.format("Start: {0,date,HH:mm:ss yyyy.MM.dd}", time) +
   str.format("\nCurrent: {0,date,HH:mm:ss yyyy.MM.dd}", timenow) +
   str.format("\nEnd: {0,date,HH:mm:ss yyyy.MM.dd}", time_close))
 
-if timenow>time and timenow<time_close
-    // start := b
+// if timenow>time and timenow<time_close
+//     // start := b
+//     top := high
+//     bot := low
+if time == chart.left_visible_bar_time
+    start := b
+    top := high
+    bot := low
+else if timenow>time and timenow<time_close
     top := high
     bot := low
 
@@ -67,13 +74,13 @@ if barstate.islast
     for [i,element] in sum
         boxes.get(i).delete()
         col = Gradient(sum,i)
-        boxes.set(i,box.new(b+offset-element,levels.get(i+1),b+offset,levels.get(i),
+        boxes.set(i,box.new(b+offset-element-1,levels.get(i+1),b+offset,levels.get(i),
          col,border_style=line.style_dotted,bgcolor=color.new(col,50),
          text=disp=="Volume"?str.tostring(vol.get(i),format.volume):str.tostring(element),text_color=chart.fg_color))
     if poc
         maxIdx = disp=="Volume"?vol.indexof(vol.max()):sum.indexof(sum.max())
         boxes.get(boxes.size()-2).delete()
-        boxes.set(boxes.size()-2,box.new(start,levels.get(maxIdx),b+offset-sum.get(maxIdx),levels.get(maxIdx+1),
+        boxes.set(boxes.size()-2,box.new(start,levels.get(maxIdx),b+offset-sum.get(maxIdx)-1,levels.get(maxIdx+1),
          #9514e0dd,border_style=line.style_dashed,bgcolor=color.new(#8f10e4, 12),
          text="POC",text_color=chart.fg_color))
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
