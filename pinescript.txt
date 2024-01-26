@@ -31,17 +31,17 @@ Gradient(a,i)=>
     out  = color.from_gradient(idx,0,a.size()-1,color.red,color.lime)
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
-yearToday = year(time)
-monthToday = month(time)
-dayToday = dayofmonth(time[1])
-targetTime = timestamp(yearToday, monthToday, dayToday, 22, 0)
-// ~~ Code {
-//Check visible chart
-if time == chart.left_visible_bar_time
-    start := b
-    top := high
-    bot := low
-else if time>targetTime
+
+printTable(txt) =>
+    var table t = table.new(position.middle_right, 1, 1)
+    table.cell(t, 0, 0, txt, text_halign = text.align_right, bgcolor = color.yellow)
+printTable(
+  str.format("Start: {0,date,HH:mm:ss yyyy.MM.dd}", time) +
+  str.format("\nCurrent: {0,date,HH:mm:ss yyyy.MM.dd}", timenow) +
+  str.format("\nEnd: {0,date,HH:mm:ss yyyy.MM.dd}", time_close))
+
+if timenow>time and timenow<time_close
+    // start := b
     top := high
     bot := low
 
