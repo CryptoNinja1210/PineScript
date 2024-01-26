@@ -33,17 +33,17 @@ Gradient(a,i)=>
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
 yearToday = year(time)
 monthToday = month(time)
-dayToday = dayofmonth(time)
+dayToday = dayofmonth(time[1])
 targetTime = timestamp(yearToday, monthToday, dayToday, 22, 0)
 // ~~ Code {
 //Check visible chart
-if time == targetTime
+if time == chart.left_visible_bar_time
     start := b
     top := high
     bot := low
 else if time>targetTime
-    top := math.max(high,top)
-    bot := math.min(low,bot)
+    top := high
+    bot := low
 
 //Set the levels
 step = (top-bot)/rows
